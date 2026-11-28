@@ -783,7 +783,7 @@ class GatewayNotificationsMixin(GatewayUpdateNotificationsMixin, GatewayNotifica
         self-post them as a new role=user prompt. Other watch events wake the session via self-post.
         """
         from gateway.wake import WakeNotAccepted, deliver_wake, persist_delegation_delivery
-        from hermes_state_errors import SessionTurnLeaseLostError
+        from persistence.core.errors import TurnLeaseLost
         is_delegation = evt.get("type") == "async_delegation"
         fail = ("Async delegation delivery persist failed" if is_delegation
                 else "Watch notification self-post wake failed") + " for session %s: %s"
@@ -813,7 +813,7 @@ class GatewayNotificationsMixin(GatewayUpdateNotificationsMixin, GatewayNotifica
                 await deliver()
             return True
         except Exception as e:
-            if raise_not_accepted and isinstance(e, SessionTurnLeaseLostError):
+            if raise_not_accepted and isinstance(e, TurnLeaseLost):
                 raise WakeNotAccepted(str(e)) from e
             logger.warning(fail, raw_sid, e)
             return False
