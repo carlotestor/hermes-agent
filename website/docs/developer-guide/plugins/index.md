@@ -470,7 +470,7 @@ This tells Hermes: "I'm a plugin called calculator, I provide tools and hooks." 
 
 List every tool your `register()` registers in `provides_tools`. The field does **not** decide whether a user-installed plugin's tools load: once the plugin is enabled, everything `register()` registers is available, declared or not. What it does drive:
 
-- **`hermes plugins validate`**: the "declared tools" check fails when the registered tools don't match the list, which blocks catalog admission.
+- **`hermes plugins validate`**: the "declared tools" check fails when the registered tools don't match the list, which blocks catalog admission. The "built-in tool collisions" check fails a declared or registered name core already ships, with one exception: a `kind: platform` plugin named after a platform core still bundles may declare that platform's own tools (the extras in its `hermes-<platform>` toolset, never the shared core tools) as long as it does not register them on that core. That lets one manifest serve a core that ships the platform (the plugin stands down) and the core that drops it.
 - **Catalog listing**: the "N tools" chips and tool-name search in the catalog and the dashboard/Desktop Plugins page.
 - **Dashboard auth hint**: only declared tools' availability checks are used to show "needs auth" and the `hermes auth <name>` command.
 - **Bundled `kind: platform` plugins only**: the field is the switch that loads `tools.py` in CLI/TUI sessions while the adapter stays deferred. See [Outbound client tools](../adding-platform-adapters.md#outbound-client-tools-provides_tools).
@@ -641,6 +641,21 @@ oauth:
     authorize_params: {access_type: offline, prompt: consent}  # Google issues a refresh token only with these
 ```
 
+Two optional fields cover authorization servers that are stricter than Google:
+
+- `redirect_port` (1024–65535) and `redirect_path` (default `/callback`) pin the
+  loopback redirect to `http://127.0.0.1:<port><path>`, for an IdP that only
+  accepts a redirect URI registered verbatim in the app's settings (Linear,
+  QuickBooks). Leave `redirect_port` out and the OS picks a free port per sign-in.
+- `redirect_host: localhost` writes `http://localhost:<port><path>` into the
+  redirect URI instead of `127.0.0.1`, for an IdP that refuses IP addresses in
+  redirect URIs (QuickBooks). The listener still binds `127.0.0.1` only.
+  QuickBooks accepts a `localhost` redirect for development (sandbox) keys only;
+  its production keys need a public HTTPS redirect, which a loopback sign-in can't provide.
+- `scope_separator: ","` joins the scopes with commas instead of spaces, for an
+  IdP whose authorize endpoint wants `scope=read,write` (Linear). Granted scopes
+  are read back whichever separator the IdP answers with.
+
 The user signs in once from a terminal with `hermes auth add gemini-voice:google`
 (the plugin's key, a colon, the entry's `id`). That is the same PKCE login the
 model-provider helper runs: a loopback redirect on `127.0.0.1`, with an SSH
@@ -729,7 +744,7 @@ this Hermes understands still loads with a warning.
 | `tags` | list of str | Free-form discovery tags (e.g. `[gateway, telegram]`). |
 | `provides_locales` | list | Language pack declaration: ids (`- pl`) or `{id, endonym, rtl}` mappings whose `locales/<id>[.tui\|.desktop].yaml` the loader registers automatically — see [Ship a language pack](#ship-a-language-pack). |
 | `requires_auth` | list of str | Providers whose sign-in the plugin uses through Hermes (today: `openai-codex`). Required by `credentialed_provider_request`; shown at install and in `hermes plugins show`. See [Use the user's Codex sign-in](#use-the-users-codex-sign-in-core-made-requests). |
-| `oauth` | list of mappings | OAuth clients the plugin uses through Hermes: `id`, `authorize_url`, `token_url`, `scopes`, `client_id_env`, optional `client_secret_env`, `hosts`, optional `authorize_params`. Signed in with `hermes auth add <plugin>:<id>`, used through `credentialed_provider_request`. See [Use your own OAuth client](#use-your-own-oauth-client-google-and-other-apis). |
+| `oauth` | list of mappings | OAuth clients the plugin uses through Hermes: `id`, `authorize_url`, `token_url`, `scopes`, `client_id_env`, optional `client_secret_env`, `hosts`, optional `authorize_params`, `scope_separator`, `redirect_port`, `redirect_path`, `redirect_host`. Signed in with `hermes auth add <plugin>:<id>`, used through `credentialed_provider_request`. See [Use your own OAuth client](#use-your-own-oauth-client-google-and-other-apis). |
 
 ```yaml
 # plugin.yaml — manifest v2 example
